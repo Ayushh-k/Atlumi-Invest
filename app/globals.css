@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --brand: #00d09c;
+  --brand-dark: #00b084;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Fade Up ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Fade In ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Slide In from Left ── */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Slide In from Right ── */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Scale Pop ── */
+@keyframes scalePop {
+  0%   { opacity: 0; transform: scale(0.88); }
+  70%  { transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Verdict Glow pulse ── */
+@keyframes verdictGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 208, 156, 0.3); }
+  50%       { box-shadow: 0 0 0 12px rgba(0, 208, 156, 0); }
+}
+@keyframes verdictGlowRed {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.3); }
+  50%       { box-shadow: 0 0 0 12px rgba(244, 63, 94, 0); }
+}
+
+/* ── Counter number animation ── */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Shimmer for skeletons ── */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ── Flowing ticker tape ── */
+@keyframes tickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Pulse dot ── */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.5); opacity: 0.6; }
+}
+
+/* ── Gauge fill ── */
+@keyframes gaugeFill {
+  from { width: 0%; }
+}
+
+/* Scrollbar hidden utility */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Gauge bar animation */
+.gauge-bar { animation: gaugeFill 1.2s cubic-bezier(.4,0,.2,1) both; }
