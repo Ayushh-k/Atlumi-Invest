@@ -1,12 +1,13 @@
 // lib/db.ts
 import { MongoClient, Db } from 'mongodb';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DATABASE_NAME = 'ai_investment_terminal';
 const COLLECTION_NAME = 'reports';
-const FILE_CACHE_PATH = path.join(process.cwd(), 'db_cache.json');
+const FILE_CACHE_PATH = path.join(os.tmpdir(), 'ai-investment-db-cache.json');
 
 let client: MongoClient | null = null;
 let db: Db | null = null;
