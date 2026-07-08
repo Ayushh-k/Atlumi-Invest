@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import ReactMarkdown from 'react-markdown';
 import { Search, TrendingUp, TrendingDown, Layers, Activity, AlertTriangle, ShieldCheck, Compass, ArrowLeft, ArrowUpRight, Flame, BarChart2, CheckCircle, ChevronRight, ChevronDown, RefreshCw, HelpCircle, Users, FileText, X, Zap, Target, Shield, Eye, ExternalLink } from 'lucide-react';
@@ -41,6 +41,7 @@ export default function MarketDashboard() {
   const [logoSrc, setLogoSrc] = useState<'clearbit'|'google'|'letter'>('clearbit');
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
   const [hoveredMetricKey, setHoveredMetricKey] = useState<string|null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -65,10 +66,13 @@ export default function MarketDashboard() {
   }, []);
 
   useEffect(() => {
-    (async () => {
+    const fetchRecentSearches = async () => {
       try { const r = await fetch('/api/recent-searches'); if (r.ok) setRecentSearches(await r.json()); } catch(e) { console.error(e); }
-    })();
-  }, [companyDetails]);
+    };
+    fetchRecentSearches();
+    const iv = setInterval(fetchRecentSearches, 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -85,22 +89,39 @@ export default function MarketDashboard() {
     } else { setSuggestions([]); setShowSuggestions(false); }
   };
 
-  const fetchMetricPayload = async (query: string) => {
+  const fetchMetricPayload = useCallback(async (query: string, options: { silent?: boolean } = {}) => {
     if (!query.trim()) return;
-    setLoading(true); setErrorMessage(null); setShowSuggestions(false); setLogoSrc('clearbit');
-    setActiveInterval('1M'); setShowFullAnalysis(false); setExpandedSwot(null);
+    if (!options.silent) {
+      setLoading(true); setErrorMessage(null); setShowSuggestions(false); setLogoSrc('clearbit');
+      setActiveInterval('1M'); setShowFullAnalysis(false); setExpandedSwot(null);
+    }
     try {
       const r = await fetch('/api/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticker: query }) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Server error');
       setCompanyDetails(data); setSearchInput('');
+      setLastUpdatedAt(new Date());
     } catch (err: any) {
-      console.error(err); setErrorMessage(err.message || 'Failed to fetch'); setCompanyDetails(null);
-    } finally { setLoading(false); }
-  };
+      console.error(err);
+      if (!options.silent) {
+        setErrorMessage(err.message || 'Failed to fetch');
+        setCompanyDetails(null);
+      }
+    } finally {
+      if (!options.silent) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!companyDetails?.ticker) return;
+    const interval = setInterval(() => {
+      fetchMetricPayload(companyDetails.ticker, { silent: true });
+    }, 180000);
+    return () => clearInterval(interval);
+  }, [companyDetails?.ticker, fetchMetricPayload]);
 
   const handleSearchSubmit = (e: React.FormEvent) => { e.preventDefault(); fetchMetricPayload(searchInput); };
-  const handleClearReport = () => { setCompanyDetails(null); setErrorMessage(null); };
+  const handleClearReport = () => { setCompanyDetails(null); setErrorMessage(null); setLastUpdatedAt(null); };
 
   /* ─── Derived Data ─── */
   const logoDomain = useMemo(() => {
@@ -215,9 +236,14 @@ export default function MarketDashboard() {
                 <ArrowLeft size={12} /> New Search
               </button>
             )}
-            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100/60 px-3 py-1 rounded-full">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#00d09c] animate-pulse"></span>
-              <span className="text-[9px] font-mono text-emerald-700 uppercase tracking-widest font-extrabold">LIVE</span>
+            <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-100/60 px-3 py-1 rounded-full">
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#00d09c] animate-pulse"></span>
+                <span className="text-[9px] font-mono text-emerald-700 uppercase tracking-widest font-extrabold">LIVE</span>
+              </div>
+              <span className="text-[10px] text-emerald-700/80 font-medium">
+                {lastUpdatedAt ? `Updated ${lastUpdatedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Auto-refreshing'}
+              </span>
             </div>
           </div>
         </div>
