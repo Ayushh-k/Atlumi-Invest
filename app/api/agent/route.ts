@@ -1,6 +1,6 @@
 // app/api/agent/route.ts
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { HfInference } from "@huggingface/inference";
 import { NextResponse } from "next/server";
 import YahooFinance from 'yahoo-finance2';
 import { getCachedReport, saveReport, CachedReport } from "@/lib/db";
@@ -158,7 +158,7 @@ async function newsNode(state: typeof AgentStateAnnotation.State) {
   let sentimentFeed = "";
   let structuredArticles: Array<{ source: string; headline: string; summary: string; url: string }> = [];
   const tavilyApiKey = process.env.TAVILY_API_KEY;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY;
 
   if (!tavilyApiKey) {
     sentimentFeed = `[DEMO] News indicators for ${searchQuery} scanned. TAVILY_API_KEY is not set.`;
@@ -187,14 +187,10 @@ async function newsNode(state: typeof AgentStateAnnotation.State) {
         const searchResults = await searchResponse.json();
         const rawArticles = searchResults.results || [];
         
-        if (rawArticles.length > 0 && geminiApiKey) {
+        if (rawArticles.length > 0 && hfApiKey) {
           try {
             // Instantiate clean LLM call to act as the "Cleaning Node"
-            const cleanerLLM = new ChatGoogleGenerativeAI({
-              model: "gemini-2.5-flash",
-              temperature: 0.1,
-              apiKey: geminiApiKey,
-            });
+            const hf = new HfInference(hfApiKey);
 
             const cleanPrompt = `You are a financial news cleaning agent.
 Clean the following raw news articles for "${searchQuery}".
@@ -214,8 +210,13 @@ Do not include any extra markdown formatting or backticks around the JSON.
 RAW ARTICLES:
 ${JSON.stringify(rawArticles, null, 2)}`;
 
-            const response = await cleanerLLM.invoke(cleanPrompt);
-            let responseText = response.content.toString().trim();
+            const response = await hf.chatCompletion({
+              model: "meta-llama/Meta-Llama-3-8B-Instruct",
+              messages: [{ role: "user", content: cleanPrompt }],
+              temperature: 0.1,
+              max_tokens: 1500,
+            });
+            let responseText = response.choices[0].message.content?.toString().trim() || "[]";
             if (responseText.startsWith("```")) {
               responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
             }
@@ -282,19 +283,15 @@ ${JSON.stringify(rawArticles, null, 2)}`;
 async function analysisNode(state: typeof AgentStateAnnotation.State) {
   if (state.error) return {};
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!hfApiKey) {
     return {
-      error: "GEMINI_API_KEY is missing. Please add it to your environment variables to run the analysis."
+      error: "HUGGINGFACE_API_KEY is missing. Please add it to your environment variables to run the analysis."
     };
   }
 
   try {
-    const llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
-      temperature: 0.2,
-      apiKey: geminiApiKey
-    });
+    const hf = new HfInference(hfApiKey);
 
     const prompt = `You are a Senior Financial Analyst evaluating ${state.companyName} (${state.ticker}).
 Your objective is to synthesize raw financial metrics and news sentiment into a comprehensive investment thesis.
@@ -315,14 +312,19 @@ Provide a detailed, institutional-grade analytical synthesis. Focus on:
 
 Ensure your tone remains objective, data-driven, and highly critical.`;
 
-    const response = await llm.invoke(prompt);
+    const response = await hf.chatCompletion({
+      model: "meta-llama/Meta-Llama-3-8B-Instruct",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      max_tokens: 1500,
+    });
     return {
-      analysis: response.content.toString()
+      analysis: response.choices[0].message.content?.toString() || ""
     };
   } catch (err: any) {
-    console.error("Gemini Analysis call failed:", err);
+    console.error("HuggingFace Analysis call failed:", err);
     return {
-      error: `Gemini synthesis failed: ${err.message || err}`
+      error: `HuggingFace synthesis failed: ${err.message || err}`
     };
   }
 }
@@ -331,19 +333,15 @@ Ensure your tone remains objective, data-driven, and highly critical.`;
 async function decisionNode(state: typeof AgentStateAnnotation.State) {
   if (state.error) return {};
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (!geminiApiKey) {
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!hfApiKey) {
     return {
-      error: "GEMINI_API_KEY is missing. Please add it to your environment variables to run the decision node."
+      error: "HUGGINGFACE_API_KEY is missing. Please add it to your environment variables to run the decision node."
     };
   }
   
   try {
-    const llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
-      temperature: 0.1,
-      apiKey: geminiApiKey,
-    });
+    const hf = new HfInference(hfApiKey);
 
     const prompt = `You are the chief Investment Committee at an institutional fund.
 Your task is to review the following analyst report on ${state.companyName} (${state.ticker}) and issue a final verdict.
@@ -389,8 +387,13 @@ Return your response strictly as a JSON object matching this schema:
 }
 Do not include any extra markdown formatting or backticks around the JSON.`;
 
-    const response = await llm.invoke(prompt);
-    let responseText = response.content.toString().trim();
+    const response = await hf.chatCompletion({
+      model: "meta-llama/Meta-Llama-3-8B-Instruct",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 1500,
+    });
+    let responseText = response.choices[0].message.content?.toString().trim() || "{}";
     
     // Clean markdown code blocks if the model wraps JSON
     if (responseText.startsWith("```")) {
@@ -408,7 +411,7 @@ Do not include any extra markdown formatting or backticks around the JSON.`;
       reasoning: resultJson.reasoning
     };
   } catch (err: any) {
-    console.error("Gemini Decision consensus call failed:", err);
+    console.error("HuggingFace Decision consensus call failed:", err);
     return {
       error: `Investment committee consensus failed: ${err.message || err}`
     };
