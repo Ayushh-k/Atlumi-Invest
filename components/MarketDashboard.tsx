@@ -51,7 +51,7 @@ export default function MarketDashboard() {
       try { const r = await fetch('/api/top-stocks'); if (r.ok) setTopStocks(await r.json()); } catch(e) { console.error(e); }
     };
     fetchTopStocks();
-    const iv = setInterval(fetchTopStocks, 45000);
+    const iv = setInterval(fetchTopStocks, 5000);
     return () => clearInterval(iv);
   }, []);
 
@@ -61,7 +61,7 @@ export default function MarketDashboard() {
       try { const r = await fetch('/api/indices'); if (r.ok) setMarketIndices(await r.json()); } catch(e) { console.error(e); }
     };
     fetchIndices();
-    const iv = setInterval(fetchIndices, 60000);
+    const iv = setInterval(fetchIndices, 5000);
     return () => clearInterval(iv);
   }, []);
 
@@ -70,7 +70,7 @@ export default function MarketDashboard() {
       try { const r = await fetch('/api/recent-searches'); if (r.ok) setRecentSearches(await r.json()); } catch(e) { console.error(e); }
     };
     fetchRecentSearches();
-    const iv = setInterval(fetchRecentSearches, 30000);
+    const iv = setInterval(fetchRecentSearches, 5000);
     return () => clearInterval(iv);
   }, []);
 
@@ -116,7 +116,7 @@ export default function MarketDashboard() {
     if (!companyDetails?.ticker) return;
     const interval = setInterval(() => {
       fetchMetricPayload(companyDetails.ticker, { silent: true });
-    }, 180000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [companyDetails?.ticker, fetchMetricPayload]);
 
