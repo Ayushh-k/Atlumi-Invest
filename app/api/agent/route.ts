@@ -6,6 +6,7 @@ import YahooFinance from 'yahoo-finance2';
 import { getCachedReport, saveReport, CachedReport } from "@/lib/db";
 
 export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
