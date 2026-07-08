@@ -217,8 +217,10 @@ ${JSON.stringify(rawArticles, null, 2)}`;
               max_tokens: 1500,
             });
             let responseText = response.choices[0].message.content?.toString().trim() || "[]";
-            if (responseText.startsWith("```")) {
-              responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+            // Robustly extract JSON array if the model includes a preamble
+            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+              responseText = jsonMatch[0];
             }
             structuredArticles = JSON.parse(responseText);
           } catch (cleanErr) {
@@ -395,10 +397,12 @@ Do not include any extra markdown formatting or backticks around the JSON.`;
     });
     let responseText = response.choices[0].message.content?.toString().trim() || "{}";
     
-    // Clean markdown code blocks if the model wraps JSON
-    if (responseText.startsWith("```")) {
-      responseText = responseText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    // Robustly extract JSON object if the model includes a preamble like "Here is the JSON..."
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      responseText = jsonMatch[0];
     }
+    
     const resultJson = JSON.parse(responseText);
 
     return {
