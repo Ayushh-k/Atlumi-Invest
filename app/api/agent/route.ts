@@ -440,18 +440,8 @@ export async function POST(req: Request) {
 
     const cleanQuery = ticker.toUpperCase().trim();
 
-    // A. Check Database/Local File cache first for instant load times (Speed)
-    try {
-      const cachedReport = await getCachedReport(cleanQuery);
-      if (cachedReport) {
-        console.log(`[CACHE HIT] Returning saved report for "${cleanQuery}"`);
-        return NextResponse.json(cachedReport);
-      }
-    } catch (cacheErr) {
-      console.warn("Failed to check cache indexes, running live:", cacheErr);
-    }
-
-    // B. Cache Miss - Execute Parallel LangGraph workflow
+    // Skip cache check for real-time updates on Vercel
+    // Always run fresh analysis workflow for live data
     console.log(`[CACHE MISS] Executing parallel LangGraph workflow for "${cleanQuery}"`);
     const finalState = await app.invoke({ query: ticker });
     
